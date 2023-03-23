@@ -17,18 +17,17 @@ const (
 	LessThanOrEqual
 )
 
-type message func(io.ReaderAt, int64) string
-type tester func(io.ReaderAt, message) (bool, string, error)
+type tester func(io.ReaderAt, string) (bool, string, error)
 type offsetReader func(io.ReaderAt) (int64, error)
 
 type MagicTest struct {
 	Test     tester
-	Message  message
+	Message  string
 	Children []MagicTest
 }
 
 func StringTest(offsetFunc offsetReader, compare string) tester {
-	return func(r io.ReaderAt, m message) (bool, string, error) {
+	return func(r io.ReaderAt, pattern string) (bool, string, error) {
 		b := make([]byte, len(compare))
 		offset, err := offsetFunc(r)
 		if err != nil {
@@ -45,11 +44,7 @@ func StringTest(offsetFunc offsetReader, compare string) tester {
 		if !isMatch {
 			return false, "", nil
 		}
-		var message string
-		if m != nil {
-			message = m(r, offset)
-		}
-		return isMatch, message, nil
+		return isMatch, messageParser(r, offset, pattern), nil
 	}
 }
 
@@ -62,7 +57,7 @@ func ShortTestBigEndian(offsetFunc offsetReader, compare uint16, comparator Oper
 }
 
 func shortTest(offsetFunc offsetReader, compare uint16, comparator Operator, endian binary.ByteOrder) tester {
-	return func(r io.ReaderAt, m message) (bool, string, error) {
+	return func(r io.ReaderAt, pattern string) (bool, string, error) {
 		b := make([]byte, 2)
 		offset, err := offsetFunc(r)
 		if err != nil {
@@ -96,11 +91,7 @@ func shortTest(offsetFunc offsetReader, compare uint16, comparator Operator, end
 		if !isMatch {
 			return false, "", nil
 		}
-		var message string
-		if m != nil {
-			message = m(r, offset)
-		}
-		return isMatch, message, nil
+		return isMatch, messageParser(r, offset, pattern), nil
 	}
 }
 
@@ -113,7 +104,7 @@ func LongTestBigEndian(offsetFunc offsetReader, compare uint64, comparator Opera
 }
 
 func longTest(offsetFunc offsetReader, compare uint64, comparator Operator, endian binary.ByteOrder) tester {
-	return func(r io.ReaderAt, m message) (bool, string, error) {
+	return func(r io.ReaderAt, pattern string) (bool, string, error) {
 		b := make([]byte, 8)
 		offset, err := offsetFunc(r)
 		if err != nil {
@@ -147,16 +138,12 @@ func longTest(offsetFunc offsetReader, compare uint64, comparator Operator, endi
 		if !isMatch {
 			return false, "", nil
 		}
-		var message string
-		if m != nil {
-			message = m(r, offset)
-		}
-		return isMatch, message, nil
+		return isMatch, messageParser(r, offset, pattern), nil
 	}
 }
 
 func ByteTest(offsetFunc offsetReader, compare byte, comparator Operator) tester {
-	return func(r io.ReaderAt, m message) (bool, string, error) {
+	return func(r io.ReaderAt, pattern string) (bool, string, error) {
 		b := make([]byte, 1)
 		offset, err := offsetFunc(r)
 		if err != nil {
@@ -190,10 +177,6 @@ func ByteTest(offsetFunc offsetReader, compare byte, comparator Operator) tester
 		if !isMatch {
 			return false, "", nil
 		}
-		var message string
-		if m != nil {
-			message = m(r, offset)
-		}
-		return isMatch, message, nil
+		return isMatch, messageParser(r, offset, pattern), nil
 	}
 }
