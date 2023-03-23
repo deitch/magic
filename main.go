@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/deitch/magic/pkg/magic"
 )
@@ -21,5 +22,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("error getting type of file %s: %v", file, err)
 	}
-	log.Printf("file %s is type %v", file, info)
+	log.Printf("%s: %s", file, strings.Join(info, ", "))
 }

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -11,28 +12,63 @@ func WithMessage(msg string) message {
 	}
 }
 
-func WithEmptyMessage() message {
+func WithMessageEmpty() message {
 	return WithMessage("")
 }
 
-func WithString(prefix, suffix string) message {
+func WithMessagePattern(pattern string) message {
 	return func(r io.ReaderAt, pos int64) string {
-		// read until we hit a null
-		b := make([]byte, 1)
-		var s string
-		for {
-			n, err := r.ReadAt(b, pos)
-			if err != nil {
-				return fmt.Sprintf("%s%s%s", prefix, s, suffix)
+		var (
+			data []any
+		)
+		for i := 0; i < len(pattern); i++ {
+			c := pattern[i]
+			if c != '%' {
+				continue
 			}
-			if n != len(b) {
-				return fmt.Sprintf("%s%s%s", prefix, s, suffix)
+			var b []byte
+			// it indicates a pattern
+			i++
+			c = pattern[i]
+			// any additional flags, width, precision or modifiers?
+			switch c {
+			case '#', '+', '-', ' ', '0':
+				i++
+				c = pattern[i]
 			}
-			if b[0] == 0 {
-				return fmt.Sprintf("%s%s%s", prefix, s, suffix)
+			switch c {
+			case 's':
+				// string, we hit a null
+				b2 := make([]byte, 1)
+				for {
+					n, err := r.ReadAt(b2, pos)
+					if err != nil || n != len(b2) || b2[0] == 0 {
+						break
+					}
+					b = append(b, b2[0])
+					pos++
+				}
+				data = append(data, string(b))
+			case '%':
+				// '%%' is a literal '%'
+			case 'd', 'i':
+				// signed decimal integer
+				b = make([]byte, 4)
+				n, err := r.ReadAt(b, pos)
+				if err != nil || n != len(b) {
+					break
+				}
+				data = append(data, int32(binary.LittleEndian.Uint32(b)))
+			case 'u', 'x', 'X':
+				// signed decimal integer
+				b = make([]byte, 4)
+				n, err := r.ReadAt(b, pos)
+				if err != nil || n != len(b) {
+					break
+				}
+				data = append(data, binary.LittleEndian.Uint32(b))
 			}
-			s += string(b[0])
-			pos++
 		}
+		return fmt.Sprintf(pattern, data...)
 	}
 }
