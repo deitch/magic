@@ -1,14 +1,19 @@
 package parser
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
 )
 
+// stringConverter is a function that converts a string to another format
+// before passing it to the usual processor.
+type stringConverter func([]byte) string
+
 // messageParser create a message given a string pattern, the ReaderAt and the position where the last read took place.
 // reference https://man7.org/linux/man-pages/man3/printf.3.html
-func messageParser(r io.ReaderAt, pos int64, pattern string) string {
+func messageParser(r UnifiedReader, pos int64, pattern string, converter stringConverter) string {
 	var (
 		data []any
 	)
@@ -30,16 +35,15 @@ func messageParser(r io.ReaderAt, pos int64, pattern string) string {
 		switch c {
 		case 's':
 			// string, we hit a null
-			b2 := make([]byte, 1)
-			for {
-				n, err := r.ReadAt(b2, pos)
-				if err != nil || n != len(b2) || b2[0] == 0 {
-					break
-				}
-				b = append(b, b2[0])
-				pos++
+			bufReader := bufio.NewReader(r)
+			msg, err := bufReader.ReadString(0x0)
+			if err != nil && err != io.EOF {
+				msg = ""
 			}
-			data = append(data, string(b))
+			if converter != nil {
+				msg = converter(b)
+			}
+			data = append(data, msg)
 		case '%':
 			// '%%' is a literal '%'
 		case 'd', 'i':
