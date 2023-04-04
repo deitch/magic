@@ -11,7 +11,7 @@ func WithOffset(offset int64) offsetReader {
 	}
 }
 
-func WithIndirectOffsetShort(offset int64, endian binary.ByteOrder) offsetReader {
+func WithIndirectOffsetShortLittleEndian(offset int64) offsetReader {
 	return func(r io.ReaderAt) (int64, error) {
 		b := make([]byte, 2)
 		n, err := r.ReadAt(b, offset)
@@ -21,7 +21,7 @@ func WithIndirectOffsetShort(offset int64, endian binary.ByteOrder) offsetReader
 		if n != len(b) {
 			return 0, nil
 		}
-		return int64(endian.Uint16(b)), nil
+		return int64(binary.LittleEndian.Uint16(b)), nil
 	}
 }
 

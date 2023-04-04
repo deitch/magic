@@ -1,6 +1,8 @@
 package magic
 
 import (
+	"io"
+
 	"github.com/deitch/magic/pkg/magic/internal"
 	parser "github.com/deitch/magic/pkg/magic/parser"
 )
@@ -8,7 +10,7 @@ import (
 // TODO: clone the sources from https://github.com/file/file/blob/master/magic/Magdir
 // or even the compiled versions from https://pkgs.alpinelinux.org/package/edge/main/x86_64/libmagic
 
-func GetType(r parser.UnifiedReader) ([]string, error) {
+func GetType(r io.ReaderAt) ([]string, error) {
 	for _, m := range internal.AllTests {
 		results, err := getType(r, m)
 		if err != nil {
@@ -20,7 +22,7 @@ func GetType(r parser.UnifiedReader) ([]string, error) {
 	return nil, nil
 }
 
-func getType(r parser.UnifiedReader, test parser.MagicTest) ([]string, error) {
+func getType(r io.ReaderAt, test parser.MagicTest) ([]string, error) {
 	var results []string
 	if ok, message, err := test.Test(r, test.Message); err != nil {
 		return nil, err
