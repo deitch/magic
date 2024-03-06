@@ -16,7 +16,7 @@ import (
     "log"
     "os"
 
-    "github.com/deitch/magic"
+    "github.com/deitch/magic/pkg/magic"
 )
 
 func main() {
